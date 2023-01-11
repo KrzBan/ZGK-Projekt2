@@ -11,11 +11,12 @@
 #include <osg/MatrixTransform>
 #include <osg/Texture2D>
 #include <osg/AnimationPath>
+#include <osg/Vec3>
 #include <osg/LightSource>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgGA/GUIEventHandler>
-#include <osgGA/FirstPersonManipulator>
+#include <osgGA/StandardManipulator>
 
 // 3D Model Plugins
 USE_OSGPLUGIN(obj)

@@ -1,5 +1,7 @@
 ﻿#include "Source.hpp"
 
+#include "FpCameraManipulator.hpp"
+
 class ModelController : public osgGA::GUIEventHandler
 {
 public:
@@ -280,11 +282,11 @@ int main()
     camera->setProjectionMatrixAsPerspective(30.0, aspect, 1.0, 1000.0);
     camera->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
     
-    osg::ref_ptr<osgGA::FirstPersonManipulator> fpm = new osgGA::FirstPersonManipulator{};
+    osg::ref_ptr<FpCameraManipulator> fpm = new FpCameraManipulator{};
 
     osgViewer::Viewer viewer;
     viewer.setCamera(camera.get());
-    viewer.setCameraManipulator(nullptr);
+    viewer.setCameraManipulator(fpm);
     auto scene = stworz_scene(&viewer);
     viewer.setSceneData(scene);
 

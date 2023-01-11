@@ -1,4 +1,5 @@
 ﻿add_executable (src "Source.cpp" "Source.hpp")
+target_sources(src PRIVATE "FpCameraManipulator.cpp" "FpCameraManipulator.hpp")
 
 find_package(OpenSceneGraph)
 find_package(spdlog)
