@@ -282,11 +282,12 @@ int main()
     camera->setProjectionMatrixAsPerspective(30.0, aspect, 1.0, 1000.0);
     camera->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
     
-    osg::ref_ptr<FpCameraManipulator> fpm = new FpCameraManipulator{};
-
     osgViewer::Viewer viewer;
-    viewer.setCamera(camera.get());
+
+    osg::ref_ptr<FpCameraManipulator> fpm = new FpCameraManipulator{};
     viewer.setCameraManipulator(fpm);
+    viewer.setCamera(camera.get());
+
     auto scene = stworz_scene(&viewer);
     viewer.setSceneData(scene);
 
