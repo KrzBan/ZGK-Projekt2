@@ -24,17 +24,20 @@ public:
 	virtual bool performMovementLeftMouseButton(const double eventTimeDelta, const double dx, const double dy);
 	virtual bool performMovementRightMouseButton(const double eventTimeDelta, const double dx, const double dy);
 
+	void RotateView(double dx, double dy);
+	void MoveCamera(double forward, double right);
+
 private:
 	void UpdateVectors();
 
 	// camera Attributes
-	osg::Vec3d Position = { 0.0, 0.0, 0.0 };
-	osg::Vec3d WorldUp = { 0.0, 0.0, 1.0 };
-	osg::Vec3d Up{};
-	osg::Vec3d Right{};
-	osg::Vec3d Forward{};
+	osg::Vec3d m_Position = { 0.0, -5.0, 0.0 };
+	osg::Vec3d m_WorldUpVec = { 0.0, 0.0, 1.0 };
+	osg::Vec3d m_UpVec{};
+	osg::Vec3d m_RightVec{};
+	osg::Vec3d m_ForwardVec{};
 
 	// euler Angles
-	double Yaw = 0.0;
-	double Pitch = 0.0;
+	double m_Yaw = 0.0;
+	double m_Pitch = 0.0;
 };

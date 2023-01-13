@@ -13,8 +13,10 @@
 #include <osg/AnimationPath>
 #include <osg/Vec3>
 #include <osg/LightSource>
+
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StandardManipulator>
 
@@ -24,3 +26,6 @@ USE_OSGPLUGIN(obj)
 USE_OSGPLUGIN(jpeg)
 // OSG Settings
 USE_GRAPHICSWINDOW()
+
+template<class T>
+using Ref = osg::ref_ptr<T>;
