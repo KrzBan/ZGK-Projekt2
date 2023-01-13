@@ -3,44 +3,81 @@
 #include "FpCameraManipulator.hpp"
 #include "Utils.hpp"
 
-class ModelController : public osgGA::GUIEventHandler {
+class PlayerController : public osgGA::GUIEventHandler {
 public:
-    ModelController(osg::MatrixTransform* node)
-        : _model(node) {}
+    PlayerController(osgViewer::Viewer* const viewer) 
+        : m_Viewer{ viewer }, m_Camera{ dynamic_cast<FpCameraManipulator*>(viewer->getCameraManipulator()) }, lastTime{ m_Viewer->getFrameStamp()->getReferenceTime() } {}
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
 
-protected:
-    Ref<osg::MatrixTransform> _model;
+private:
+    FpCameraManipulator* const m_Camera{};
+    osgViewer::Viewer* const m_Viewer;
+
+    double moveForward = 0.0;
+    double moveRight = 0.0;
+    double moveBackwards = 0.0;
+    double moveLeft = 0.0;
+
+    double lastTime = 0.0;
 };
 
-bool ModelController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
-    if (!_model) return false;
-    osg::Matrix matrix = _model->getMatrix();
-    spdlog::info("Event: {}", ea.getEventType());
+bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
+
+    constexpr double moveSpeed = 0.1;
+    auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
+    auto deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    if (deltaTime == 0) return false;
+
+    spdlog::info("Reference time: {}, FPS: {}", deltaTime, 1.0 / deltaTime);
+
     switch (ea.getEventType()) {
     case osgGA::GUIEventAdapter::KEYDOWN:
         switch (ea.getKey()) {
         case 'a': case 'A':
-            matrix *= osg::Matrix::rotate(-0.1f, osg::Z_AXIS);
+            moveLeft = 1.0;
             break;
         case 'd': case 'D':
-            matrix *= osg::Matrix::rotate(0.1f, osg::Z_AXIS);
+            moveRight = 1.0;
             break;
         case 'w': case 'W':
-            matrix *= osg::Matrix::rotate(-0.1f, osg::X_AXIS);
+            moveForward = 1.0;
             break;
         case 's': case 'S':
-            matrix *= osg::Matrix::rotate(0.1f, osg::X_AXIS);
+            moveBackwards = 1.0;
             break;
         default:
             break;
         }
-        _model->setMatrix(matrix);
+        break;
+    case osgGA::GUIEventAdapter::KEYUP:
+        switch (ea.getKey()) {
+        case 'a': case 'A':
+            moveLeft = 0.0;
+            break;
+        case 'd': case 'D':
+            moveRight = 0.0;
+            break;
+        case 'w': case 'W':
+            moveForward = 0.0;
+            break;
+        case 's': case 'S':
+            moveBackwards = 0.0;
+            break;
+        default:
+            break;
+        }
         break;
     default:
         break;
     }
+
+    osg::Vec2d moveVec = { moveRight - moveLeft , moveForward - moveBackwards };
+    moveVec.normalize();
+    m_Camera->MoveCamera(moveSpeed * moveVec.y(), moveSpeed * moveVec.x());
+
     return false;
 }
 
@@ -48,13 +85,16 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
 {
     Ref<osg::Group> scn = new osg::Group();
 
+    Ref<PlayerController> pc = new PlayerController{ viewer };
+    viewer->addEventHandler(pc);
+
     auto sphere = LoadModel("assets/sphere.obj");
 
-    auto* t1 = new osg::MatrixTransform();
-    t1->setMatrix(osg::Matrix::scale(1.0, 1.0, 1.0) *
+    auto* trans = new osg::MatrixTransform();
+    trans->setMatrix(osg::Matrix::scale(1.0, 1.0, 1.0) *
         osg::Matrix::translate(0.0, 0.0, 0.0));
-    t1->addChild(sphere);
-    scn->addChild(t1);
+    trans->addChild(sphere);
+    scn->addChild(trans);
     
     return scn;
 }
