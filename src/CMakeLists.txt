@@ -2,7 +2,10 @@
 
 target_sources(src PRIVATE 
 "Utils.hpp" "Utils.cpp"
-"FpCameraManipulator.cpp" "FpCameraManipulator.hpp" )
+"FpCameraManipulator.cpp" "FpCameraManipulator.hpp" 
+"Ray.hpp" "Ray.cpp"
+"Sphere.hpp" "Sphere.cpp"
+)
 
 find_package(OpenSceneGraph)
 find_package(spdlog)
