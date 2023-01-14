@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <random>
+#include <algorithm>
 #include <spdlog/spdlog.h>
 
 // OpenSceneGraph
@@ -21,6 +23,8 @@
 
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StandardManipulator>
+
+#include <osgText/Text>
 
 // 3D Model Plugins
 USE_OSGPLUGIN(obj)

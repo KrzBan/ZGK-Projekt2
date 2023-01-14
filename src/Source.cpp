@@ -5,6 +5,7 @@
 
 #include "Ray.hpp"
 #include "Sphere.hpp"
+#include "TextManager.hpp"
 
 class ShapeController : public osgGA::GUIEventHandler {
 public:
@@ -19,7 +20,7 @@ public:
         auto deltaTime = currentTime - lastTime;
         lastTime = currentTime;
 
-        constexpr double fallSpeed = 1.0;
+        constexpr double fallSpeed = 0.5;
 
         auto fallVec = osg::Vec3d{ 0.0, 0.0, -fallSpeed * deltaTime };
         m_Transform->setMatrix(
@@ -30,7 +31,6 @@ public:
 
         m_Shape->m_Position = m_Transform->getMatrix().getTrans();
 
-        spdlog::info("{}", m_Transform->getMatrix().getTrans().z());
         return false;
     }
 private:
@@ -45,6 +45,21 @@ struct ShapeNode {
     Ref<osg::Node> node;
     Ref<ShapeController> shapeController;
     bool shouldRemove = false;
+};
+
+class DrawRayController : public osgGA::GUIEventHandler {
+public:
+    DrawRayController(Ref<osg::Geode> rayGeode, Ref<osg::Group> shapesRoot)
+        : m_RayGeode{ rayGeode }, m_ShapesRoot{ shapesRoot } {}
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override {
+
+
+        return false;
+    }
+private:
+    Ref<osg::Geode> m_RayGeode{};
+    Ref<osg::Group> m_ShapesRoot{};
 };
 
 class PlayerController : public osgGA::GUIEventHandler {
@@ -64,6 +79,8 @@ public:
     void ShootRay();
     void RayTest(const Ray& ray, uint32_t depth, std::vector<osg::Vec3d>& hitPoints);
     void DrawRay(const std::vector<osg::Vec3d>& hitPoints);
+    void SpawnSphere();
+    void AddShape(const std::shared_ptr<Sphere>& sphere);
 private:
     FpCameraManipulator* const m_Camera{};
     osgViewer::Viewer* const m_Viewer;
@@ -77,28 +94,42 @@ private:
     double moveLeft = 0.0;
 
     double lastTime = 0.0;
+    double lastBallSpawn = 0.0;
 };
 
-class DrawRayController : public osgGA::GUIEventHandler {
-public:
-    DrawRayController(Ref<osg::Geode> rayGeode, Ref<osg::Group> shapesRoot)
-        : m_RayGeode{ rayGeode }, m_ShapesRoot { shapesRoot } {}
+void PlayerController::AddShape(const std::shared_ptr<Sphere>& sphere) {
+    static auto sphereModel = LoadModel("assets/sphere.obj");
 
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override {
-        
+    Ref<osg::MatrixTransform> trans = new osg::MatrixTransform();
+    trans->setMatrix(osg::Matrix::scale(sphere->m_Radius, sphere->m_Radius, sphere->m_Radius) *
+        osg::Matrix::translate(sphere->m_Position));
+    trans->addChild(sphereModel);
+    m_ShapesRoot->addChild(trans);
 
-        return false;
-    }
-private:
-    Ref<osg::Geode> m_RayGeode{};
-    Ref<osg::Group> m_ShapesRoot{};
-};
+    Ref<ShapeController> sc = new ShapeController{ m_Viewer, trans, sphere };
+    m_Viewer->addEventHandler(sc);
+    m_Shapes.push_back({ sphere, trans, sc });
+}
+
+void PlayerController::SpawnSphere() {
+    static auto gen = std::mt19937{};
+
+    static auto radiusDist = std::uniform_real_distribution<double>{0.3, 1.0};
+    static auto posDist = std::uniform_real_distribution<double>{ -5.0, 5.0 };
+
+    const auto radius = radiusDist(gen);
+    const auto pos = osg::Vec3d{ posDist(gen), posDist(gen), 5.0 };
+
+    auto sphere = std::make_shared<Sphere>(pos, radius);
+
+    AddShape(sphere);
+}
 
 void PlayerController::ShootRay() {
     Ray ray{ m_Camera->m_Position, m_Camera->m_ForwardVec };
 
     std::vector<osg::Vec3d> hitLocations{ m_Camera->m_Position + osg::Vec3d{0.0, 0.05, -0.05} };
-    RayTest(ray, 10, hitLocations);
+    RayTest(ray, 0, hitLocations);
 
     DrawRay(hitLocations);
 
@@ -149,7 +180,7 @@ void PlayerController::DrawRay(const std::vector<osg::Vec3d>& hitPoints) {
 }
 
 void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::Vec3d>& hitPoints) {
-    if (depth == 0) {
+    if (depth == 30) {
         spdlog::trace("[RayTest] Depth limit reached.");
         return;
     }
@@ -171,10 +202,12 @@ void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::
     }
 
     if (hitAnything) {
+        TextManager::AddPoints(10 * (3*depth + 1));
+
         spdlog::trace("[RayTest] Hit!");
         hitPoints.push_back(hitInfo.position);
         Ray scattered{ hitInfo.position, hitInfo.normal };
-        RayTest(scattered, depth - 1, hitPoints);
+        RayTest(scattered, depth + 1, hitPoints);
         recentNode->shouldRemove = true;
         return;
     }
@@ -184,8 +217,7 @@ void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::
 }
 
 void PlayerController::InitShapes() {
-    static auto sphereModel = LoadModel("assets/sphere.obj");
-
+ 
     std::vector<std::shared_ptr<Sphere>> spheres = {
         std::make_shared<Sphere>(osg::Vec3d{1.0, 2.0, 0.0}, 1.0),
         std::make_shared<Sphere>(osg::Vec3d{-1.0, 1.7, 0.0}, 0.5),
@@ -193,15 +225,7 @@ void PlayerController::InitShapes() {
     };
 
     for (const auto& sphere : spheres) {
-        Ref<osg::MatrixTransform> trans = new osg::MatrixTransform();
-        trans->setMatrix(osg::Matrix::scale(sphere->m_Radius, sphere->m_Radius, sphere->m_Radius) *
-                         osg::Matrix::translate(sphere->m_Position));
-        trans->addChild(sphereModel);
-        m_ShapesRoot->addChild(trans);
-
-        Ref<ShapeController> sc = new ShapeController{ m_Viewer, trans, sphere };
-        m_Viewer->addEventHandler(sc);
-        m_Shapes.push_back({ sphere, trans, sc });
+        AddShape(sphere);
     }
 }
 
@@ -210,6 +234,13 @@ bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
     auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
     auto deltaTime = currentTime - lastTime;
     lastTime = currentTime;
+
+    lastBallSpawn += deltaTime;
+    constexpr double shapeSpawnTime = 0.5;
+    if (lastBallSpawn > shapeSpawnTime) {
+        SpawnSphere();
+        lastBallSpawn = 0.0;
+    }
 
     // spdlog::info("Reference time: {}, FPS: {}", deltaTime, 1.0 / deltaTime);
 
@@ -280,6 +311,20 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
     Ref<PlayerController> pc = new PlayerController{ viewer, shapesRoot };
     viewer->addEventHandler(pc);
 
+    // HUD Camera
+    osg::ref_ptr<osg::Geode> textGeode = new osg::Geode;
+    auto text = createText( osg::Vec3(10.0f, 30.0f, 0.0f), "Score: 0", 20.0f);
+    textGeode->addDrawable(text);
+
+    TextManager::SetTextNode(text);
+
+    osg::Camera* camera = createHUDCamera(0, 1024, 0, 768);
+    camera->addChild(textGeode.get());
+    camera->getOrCreateStateSet()->setMode(
+        GL_LIGHTING, osg::StateAttribute::OFF);
+
+    scn->addChild(camera);
+
     return scn;
 }
 
@@ -309,6 +354,7 @@ void EntryPoint() {
         viewer.frame();
     }
 }
+
 
 int main() {
     spdlog::set_level(spdlog::level::trace);
