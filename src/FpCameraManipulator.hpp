@@ -30,6 +30,7 @@ public:
 private:
 	void UpdateVectors();
 
+public:
 	// camera Attributes
 	osg::Vec3d m_Position = { 0.0, -5.0, 0.0 };
 	osg::Vec3d m_WorldUpVec = { 0.0, 0.0, 1.0 };

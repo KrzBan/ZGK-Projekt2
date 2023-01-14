@@ -13,6 +13,8 @@
 #include <osg/AnimationPath>
 #include <osg/Vec3>
 #include <osg/LightSource>
+#include <osg/LineWidth>
+#include <osg/BlendFunc>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>

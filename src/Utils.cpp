@@ -18,7 +18,7 @@ osg::ref_ptr<osg::Camera> SetupCamera() {
     camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
     camera->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     camera->setClearColor(osg::Vec4(0.2f, 0.2f, 0.4f, 1.0f));
-    camera->setProjectionMatrixAsPerspective(30.0, aspect, 1.0, 1000.0);
+    camera->setProjectionMatrixAsPerspective(30.0, aspect, 0.01, 1000.0);
     camera->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
 
     return camera;

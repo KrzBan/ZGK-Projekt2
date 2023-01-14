@@ -17,7 +17,3 @@ public:
 	bool Hit(const Ray& ray, float tMin, float tMax, HitInfo& hitInfo) const;
 };
 
-struct SphereNode {
-	Sphere sphere;
-	Ref<osg::Node> node;
-};
