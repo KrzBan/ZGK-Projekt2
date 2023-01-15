@@ -5,7 +5,7 @@ target_sources(src PRIVATE
 "FpCameraManipulator.cpp" "FpCameraManipulator.hpp" 
 "Ray.hpp" "Ray.cpp"
 "Sphere.hpp" "Sphere.cpp"
- "TextManager.cpp" "TextManager.hpp")
+ "TextManager.cpp" "TextManager.hpp" "SkyBox.cpp" "SkyBox.hpp")
 
 find_package(OpenSceneGraph)
 find_package(spdlog)

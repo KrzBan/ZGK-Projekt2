@@ -17,6 +17,10 @@
 #include <osg/LightSource>
 #include <osg/LineWidth>
 #include <osg/BlendFunc>
+#include <osg/Depth>
+#include <osg/TextureCubeMap>
+#include <osg/ShapeDrawable>
+#include <osg/TexGen>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>

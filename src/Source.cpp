@@ -6,6 +6,7 @@
 #include "Ray.hpp"
 #include "Sphere.hpp"
 #include "TextManager.hpp"
+#include "SkyBox.hpp"
 
 class ShapeController : public osgGA::GUIEventHandler {
 public:
@@ -49,17 +50,44 @@ struct ShapeNode {
 
 class DrawRayController : public osgGA::GUIEventHandler {
 public:
-    DrawRayController(Ref<osg::Geode> rayGeode, Ref<osg::Group> shapesRoot)
-        : m_RayGeode{ rayGeode }, m_ShapesRoot{ shapesRoot } {}
+    DrawRayController(Ref<osg::Geode> rayGeode, Ref<osg::Group> shapesRoot, osgViewer::Viewer* viewer)
+        : m_RayGeode{ rayGeode }, m_ShapesRoot{ shapesRoot }, m_Viewer{ viewer }, lastTime{ m_Viewer->getFrameStamp()->getReferenceTime() } {}
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override {
+        if (invalid) return false;
+        if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME) return false;
 
+        auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
+        auto deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        auto drawable = dynamic_cast<osg::Geometry*>(m_RayGeode->getDrawable(0));
+        auto colors = dynamic_cast<osg::Vec4Array*>(drawable->getColorArray());
+
+        bool remove = false;
+
+        osg::Vec4* data = (osg::Vec4*)colors->getDataPointer();
+        for (int i = 0; i < colors->size(); ++i) {
+            data[i][3] -= 0.5 * deltaTime;
+            if (data[i][3] < 0) remove = true;
+        }
+
+        if (remove) {
+            m_ShapesRoot->removeChild(m_RayGeode);
+            invalid = true;
+            return false;
+        }
+
+        drawable->dirtyGLObjects();
 
         return false;
     }
 private:
     Ref<osg::Geode> m_RayGeode{};
     Ref<osg::Group> m_ShapesRoot{};
+    osgViewer::Viewer* m_Viewer;
+    double lastTime = 0.0;
+    bool invalid = false;
 };
 
 class PlayerController : public osgGA::GUIEventHandler {
@@ -177,6 +205,9 @@ void PlayerController::DrawRay(const std::vector<osg::Vec3d>& hitPoints) {
     n->getOrCreateStateSet()->setAttributeAndModes(linewidth, osg::StateAttribute::ON);
 
     m_ShapesRoot->addChild(n);
+
+    Ref<DrawRayController> drc = new DrawRayController{ n, m_ShapesRoot, m_Viewer };
+    m_Viewer->addEventHandler(drc);
 }
 
 void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::Vec3d>& hitPoints) {
@@ -324,6 +355,24 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
         GL_LIGHTING, osg::StateAttribute::OFF);
 
     scn->addChild(camera);
+
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    geode->addDrawable(new osg::ShapeDrawable(
+        new osg::Sphere(osg::Vec3(), 10)));
+
+    osg::ref_ptr<SkyBox> skybox = new SkyBox;
+    skybox->getOrCreateStateSet()->setTextureAttributeAndModes(
+        0, new osg::TexGen);
+    skybox->setEnvironmentMap(0,
+        osgDB::readImageFile("assets/negx.jpg"),
+        osgDB::readImageFile("assets/posx.jpg"),
+        osgDB::readImageFile("assets/negz.jpg"),
+        osgDB::readImageFile("assets/posz.jpg"),
+        osgDB::readImageFile("assets/posy.jpg"),
+        osgDB::readImageFile("assets/negy.jpg"));
+    skybox->addChild(geode.get());
+
+    scn->addChild(skybox);
 
     return scn;
 }
