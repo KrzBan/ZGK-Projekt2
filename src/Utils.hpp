@@ -6,6 +6,8 @@ osg::ref_ptr<osg::Camera> SetupCamera();
 
 osg::ref_ptr<osg::Node> LoadModel(const std::string& pathname);
 
+osg::Vec4d RandomColor();
+
 inline osg::ref_ptr<osgText::Font> g_font = osgText::readFontFile("fonts/arial.ttf");
 
 inline osgText::Text* createText(const osg::Vec3& pos,

@@ -21,6 +21,7 @@
 #include <osg/TextureCubeMap>
 #include <osg/ShapeDrawable>
 #include <osg/TexGen>
+#include <osg/Material>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
@@ -34,6 +35,7 @@
 USE_OSGPLUGIN(obj)
 // 2D Texture Plugins
 USE_OSGPLUGIN(jpeg)
+USE_OSGPLUGIN(freetype)
 // OSG Settings
 USE_GRAPHICSWINDOW()
 

@@ -128,6 +128,10 @@ private:
 void PlayerController::AddShape(const std::shared_ptr<Sphere>& sphere) {
     static auto sphereModel = LoadModel("assets/sphere.obj");
 
+    Ref<osg::Material> mat = new osg::Material{};
+    mat->setDiffuse(osg::Material::FRONT_AND_BACK, RandomColor());
+    sphereModel->getOrCreateStateSet()->setAttributeAndModes(mat, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
     Ref<osg::MatrixTransform> trans = new osg::MatrixTransform();
     trans->setMatrix(osg::Matrix::scale(sphere->m_Radius, sphere->m_Radius, sphere->m_Radius) *
         osg::Matrix::translate(sphere->m_Position));
@@ -350,7 +354,7 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
     TextManager::SetTextNode(text);
 
     osg::Camera* camera = createHUDCamera(0, 1024, 0, 768);
-    camera->addChild(textGeode.get());
+    camera->addChild(textGeode);
     camera->getOrCreateStateSet()->setMode(
         GL_LIGHTING, osg::StateAttribute::OFF);
 
@@ -372,7 +376,7 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
         osgDB::readImageFile("assets/negy.jpg"));
     skybox->addChild(geode.get());
 
-    scn->addChild(skybox);
+    //scn->addChild(skybox);
 
     return scn;
 }

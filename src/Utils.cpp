@@ -1,11 +1,19 @@
 #include "Utils.hpp"
 
+osg::Vec4d RandomColor() {
+    static auto gen = std::mt19937{};
+    static auto dist = std::uniform_real_distribution<double>{ 0.0, 1.0 };
+
+    const auto color = osg::Vec4d{ dist(gen), dist(gen), dist(gen), 1.0 };
+    return color;
+}
+
 osg::ref_ptr<osg::Camera> SetupCamera() {
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->x = 50;
     traits->y = 50;
-    traits->width = 800;
-    traits->height = 600;
+    traits->width = 1280;
+    traits->height = 720;
     traits->windowName = "OSG application";
     traits->windowDecoration = true;
     traits->doubleBuffer = true;
@@ -31,6 +39,5 @@ osg::ref_ptr<osg::Node> LoadModel(const std::string& pathanme) {
         throw std::runtime_error(error);
     }
     sphere->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
-
     return sphere;
 }

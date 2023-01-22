@@ -18,6 +18,8 @@ public:
 	virtual void getTransformation(osg::Vec3d&, osg::Quat&) const {}
 	virtual void getTransformation(osg::Vec3d&, osg::Vec3d&, osg::Vec3d&) const {}
 
+	virtual bool handleKeyDown(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us) override { return false; }
+
 	virtual void home(double);
 	virtual void home(const osgGA::GUIEventAdapter & ea, osgGA::GUIActionAdapter & us);
 
