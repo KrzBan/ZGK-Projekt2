@@ -304,7 +304,7 @@ bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
 
     // Move Player
     constexpr double moveSpeed = 5.0;
-    constexpr double rotSpeed = 3.0;
+    constexpr double rotSpeed = 1.5;
 
     double moveHor = (Input::GetKey('d') ? 1 : 0) - (Input::GetKey('a') ? 1 : 0);
     double moveVer = (Input::GetKey('w') ? 1 : 0) - (Input::GetKey('s') ? 1 : 0);
