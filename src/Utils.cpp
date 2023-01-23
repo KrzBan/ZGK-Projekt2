@@ -10,11 +10,11 @@ osg::Vec4d RandomColor() {
 
 osg::ref_ptr<osg::Camera> SetupCamera() {
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
-    traits->x = 50;
-    traits->y = 50;
+    traits->x = 100;
+    traits->y = 100;
     traits->width = 1280;
     traits->height = 720;
-    traits->windowName = "OSG application";
+    traits->windowName = "Space InMiners";
     traits->windowDecoration = true;
     traits->doubleBuffer = true;
     traits->samples = 4;
