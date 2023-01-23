@@ -161,7 +161,7 @@ void PlayerController::SpawnSphere() {
     static auto posDist = std::uniform_real_distribution<double>{ -5.0, 5.0 };
 
     const auto radius = radiusDist(gen);
-    const auto pos = osg::Vec3d{ posDist(gen), posDist(gen), 5.0 };
+    const auto pos = osg::Vec3d{ posDist(gen), posDist(gen), 20.0 };
 
     auto sphere = std::make_shared<Sphere>(pos, radius);
 
@@ -250,9 +250,9 @@ void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::
 void PlayerController::InitShapes() {
  
     std::vector<std::shared_ptr<Sphere>> spheres = {
-        std::make_shared<Sphere>(osg::Vec3d{1.0, 2.0, 0.0}, 1.0),
-        std::make_shared<Sphere>(osg::Vec3d{-1.0, 1.7, 0.0}, 0.5),
-        std::make_shared<Sphere>(osg::Vec3d{0.0, 1.5, 0.0}, 0.1)
+        std::make_shared<Sphere>(osg::Vec3d{1.0, 2.0, 5.0}, 1.0),
+        std::make_shared<Sphere>(osg::Vec3d{-1.0, 1.7, 10.0}, 0.5),
+        std::make_shared<Sphere>(osg::Vec3d{0.0, 1.5, 15.0}, 0.1)
     };
 
     for (const auto& sphere : spheres) {
@@ -263,6 +263,8 @@ void PlayerController::InitShapes() {
 bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
   
     if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME) return false;
+
+    TextManager::SetTime(Time::GetTime());
 
     auto deltaTime = Time::GetDeltaTime();
     lastBallSpawn += deltaTime;
@@ -334,10 +336,14 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
 
     // HUD Camera
     osg::ref_ptr<osg::Geode> textGeode = new osg::Geode;
-    auto text = createText( osg::Vec3(10.0f, 30.0f, 0.0f), "Score: 0", 20.0f);
-    textGeode->addDrawable(text);
+    auto textScore = createText( osg::Vec3(10.0f, 30.0f, 0.0f), "Score: 0", 20.0f);
+    osg::ref_ptr<osg::Geode> timeGeode = new osg::Geode;
+    auto textTime = createText(osg::Vec3(10.0f, 50.0f, 0.0f), "Time: ", 20.0f);
+    textGeode->addDrawable(textScore);
+    textGeode->addDrawable(textTime);
 
-    TextManager::SetTextNode(text);
+    TextManager::SetTextNode(textScore);
+    TextManager::SetTimeNode(textTime);
 
     osg::Camera* camera = createHUDCamera(0, 1024, 0, 768);
     camera->getOrCreateStateSet()->setMode(

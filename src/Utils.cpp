@@ -39,6 +39,15 @@ osg::ref_ptr<osg::Node> LoadModel(const std::string& pathanme) {
         throw std::runtime_error(error);
     }
     sphere->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
+
+    //osg::ref_ptr<osg::Image> image = osgDB::readImageFile("assets/star.jpg");
+    //if (image == nullptr) {
+    //    throw std::runtime_error("Couldn't read texture file!");
+    //}
+    //osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D(image.get());
+    //texture->setUnRefImageDataAfterApply(true);
+    //sphere->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture.get());
+
     return sphere;
 }
 
