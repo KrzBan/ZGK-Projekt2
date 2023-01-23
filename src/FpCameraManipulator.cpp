@@ -16,7 +16,7 @@ void FpCameraManipulator::setByInverseMatrix(const osg::Matrixd& matrix) {
 }
 
 void FpCameraManipulator::home(double) {
-	m_Position = { 0.0, -5.0, 0.0 };
+	m_Position = { 0.0, -50.0, 0.0 };
 	m_Yaw = 0.0f;
 	m_Pitch = 0.0f;
 

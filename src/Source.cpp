@@ -7,23 +7,35 @@
 #include "Sphere.hpp"
 #include "TextManager.hpp"
 #include "SkyBox.hpp"
+#include "Time.hpp"
+#include "Input.hpp"
 
 class ShapeController : public osgGA::GUIEventHandler {
 public:
     ShapeController(osgViewer::Viewer* const viewer, Ref<osg::MatrixTransform> transform, std::shared_ptr<Sphere> shape)
-        : m_Viewer{ viewer }, m_Transform { transform }, m_Shape{shape}, lastTime{ viewer->getFrameStamp()->getReferenceTime() } {}
+        : m_Viewer{ viewer }, m_Transform { transform }, m_Shape{shape} 
+    {
+        static auto gen = std::mt19937{};
+        static auto dist = std::uniform_real_distribution<double>{ 0.5, 1.5 };
+
+        fallSpeed = dist(gen);
+        rotSpeed = dist(gen);
+        rotLengthX = dist(gen);
+        rotLengthY = dist(gen);
+        rotOffset = dist(gen);
+    }
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override {
 
         if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME) return false;
         
-        auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
-        auto deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
+        auto deltaTime = Time::GetDeltaTime();
+        auto time = Time::GetTime();
 
-        constexpr double fallSpeed = 0.5;
-
-        auto fallVec = osg::Vec3d{ 0.0, 0.0, -fallSpeed * deltaTime };
+        auto fallVec = osg::Vec3d{ 
+            rotLengthX*std::sin(time * rotSpeed + rotOffset), 
+            rotLengthY*std::cos(time * rotSpeed + rotOffset), 
+            -fallSpeed} * deltaTime;
         m_Transform->setMatrix(
             osg::Matrixd::rotate(m_Transform->getMatrix().getRotate()) *
             osg::Matrixd::scale(m_Transform->getMatrix().getScale()) * 
@@ -35,10 +47,15 @@ public:
         return false;
     }
 private:
+    double fallSpeed{};
+    double rotSpeed{};
+    double rotLengthX{};
+    double rotLengthY{};
+    double rotOffset{};
+
     osgViewer::Viewer* const m_Viewer;
     Ref<osg::MatrixTransform> m_Transform{};
     std::shared_ptr<Sphere> m_Shape{};
-    double lastTime = 0.0;
 };
 
 struct ShapeNode {
@@ -50,16 +67,14 @@ struct ShapeNode {
 
 class DrawRayController : public osgGA::GUIEventHandler {
 public:
-    DrawRayController(Ref<osg::Geode> rayGeode, Ref<osg::Group> shapesRoot, osgViewer::Viewer* viewer)
-        : m_RayGeode{ rayGeode }, m_ShapesRoot{ shapesRoot }, m_Viewer{ viewer }, lastTime{ m_Viewer->getFrameStamp()->getReferenceTime() } {}
+    DrawRayController(Ref<osg::Geode> rayGeode, osgViewer::Viewer* viewer)
+        : m_RayGeode{ rayGeode }, m_Viewer{ viewer } {}
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override {
         if (invalid) return false;
         if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME) return false;
 
-        auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
-        auto deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
+        auto deltaTime = Time::GetDeltaTime();
 
         auto drawable = dynamic_cast<osg::Geometry*>(m_RayGeode->getDrawable(0));
         auto colors = dynamic_cast<osg::Vec4Array*>(drawable->getColorArray());
@@ -73,20 +88,18 @@ public:
         }
 
         if (remove) {
-            m_ShapesRoot->removeChild(m_RayGeode);
-            invalid = true;
+            for(const auto& parent: m_RayGeode->getParents()) 
+                parent->removeChild(m_RayGeode);
+            invalid = true; 
             return false;
         }
 
-        drawable->dirtyGLObjects();
-
+        drawable->dirtyGLObjects(); // Refresh object colors
         return false;
     }
 private:
     Ref<osg::Geode> m_RayGeode{};
-    Ref<osg::Group> m_ShapesRoot{};
     osgViewer::Viewer* m_Viewer;
-    double lastTime = 0.0;
     bool invalid = false;
 };
 
@@ -95,8 +108,7 @@ public:
     PlayerController(osgViewer::Viewer* const viewer, Ref<osg::Group> shapesRoot )
         : m_Viewer{ viewer }, 
           m_ShapesRoot{shapesRoot},
-          m_Camera{ dynamic_cast<FpCameraManipulator*>(viewer->getCameraManipulator()) }, 
-          lastTime{ m_Viewer->getFrameStamp()->getReferenceTime() } 
+          m_Camera{ dynamic_cast<FpCameraManipulator*>(viewer->getCameraManipulator()) }
     {
         InitShapes();
     }
@@ -104,7 +116,7 @@ public:
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
 
     void InitShapes();
-    void ShootRay();
+    void ShootRay(const Ray& ray);
     void RayTest(const Ray& ray, uint32_t depth, std::vector<osg::Vec3d>& hitPoints);
     void DrawRay(const std::vector<osg::Vec3d>& hitPoints);
     void SpawnSphere();
@@ -121,7 +133,6 @@ private:
     double moveBackwards = 0.0;
     double moveLeft = 0.0;
 
-    double lastTime = 0.0;
     double lastBallSpawn = 0.0;
 };
 
@@ -157,26 +168,12 @@ void PlayerController::SpawnSphere() {
     AddShape(sphere);
 }
 
-void PlayerController::ShootRay() {
-    Ray ray{ m_Camera->m_Position, m_Camera->m_ForwardVec };
-
-    std::vector<osg::Vec3d> hitLocations{ m_Camera->m_Position + osg::Vec3d{0.0, 0.05, -0.05} };
+void PlayerController::ShootRay(const Ray& ray) {
+  
+    std::vector<osg::Vec3d> hitLocations{ ray.Origin() + m_Camera->m_RightVec * 0.0 - m_Camera->m_ForwardVec * 0.05 - m_Camera->m_UpVec * 0.05 };
     RayTest(ray, 0, hitLocations);
 
     DrawRay(hitLocations);
-
-    std::vector<ShapeNode> newList{};
-    for (auto& sphereNode : m_Shapes) {
-        if (sphereNode.shouldRemove == true) {
-            m_ShapesRoot->removeChild(sphereNode.node);
-            m_Viewer->removeEventHandler(sphereNode.shapeController);
-        }
-        else {
-            newList.push_back(std::move(sphereNode));
-        }
-    }
-
-    m_Shapes = std::move(newList);
 }
 
 void PlayerController::DrawRay(const std::vector<osg::Vec3d>& hitPoints) {
@@ -192,7 +189,7 @@ void PlayerController::DrawRay(const std::vector<osg::Vec3d>& hitPoints) {
         v->push_back(point);
         e->push_back(id++);
 
-        auto verCol = id % 2 ? osg::Vec4(1.0, 0.1, 0.1, 0.5) : osg::Vec4(0.7, 0.8, 0.1, 0.5);
+        auto verCol = id % 2 ? osg::Vec4(0.1, 0.9, 0.1, 1.0) : osg::Vec4(0.8, 0.1, 0.05, 1.0);
         c->push_back(verCol);
     }
 
@@ -205,12 +202,12 @@ void PlayerController::DrawRay(const std::vector<osg::Vec3d>& hitPoints) {
     n->addDrawable(g);
     
     osg::LineWidth* linewidth = new osg::LineWidth();
-    linewidth->setWidth(5.0f);
+    linewidth->setWidth(2.0f);
     n->getOrCreateStateSet()->setAttributeAndModes(linewidth, osg::StateAttribute::ON);
 
     m_ShapesRoot->addChild(n);
 
-    Ref<DrawRayController> drc = new DrawRayController{ n, m_ShapesRoot, m_Viewer };
+    Ref<DrawRayController> drc = new DrawRayController{ n, m_Viewer };
     m_Viewer->addEventHandler(drc);
 }
 
@@ -222,25 +219,24 @@ void PlayerController::RayTest(const Ray& ray, uint32_t depth, std::vector<osg::
 
     // Find Closest Hit
     HitInfo hitInfo{};
-    bool hitAnything = false;
     ShapeNode* recentNode = nullptr;
     float bestHit = std::numeric_limits<float>::infinity();
 
     for (auto& sphereNode : m_Shapes) {
         HitInfo tempInfo{};
         if (sphereNode.sphere->Hit(ray, 0.001, bestHit, tempInfo)) {
-            hitAnything = true;
             bestHit = tempInfo.t;
             hitInfo = tempInfo;
             recentNode = &sphereNode;
         }
     }
 
-    if (hitAnything) {
+    if (recentNode != nullptr) {
         TextManager::AddPoints(10 * (3*depth + 1));
 
         spdlog::trace("[RayTest] Hit!");
         hitPoints.push_back(hitInfo.position);
+
         Ray scattered{ hitInfo.position, hitInfo.normal };
         RayTest(scattered, depth + 1, hitPoints);
         recentNode->shouldRemove = true;
@@ -265,69 +261,59 @@ void PlayerController::InitShapes() {
 }
 
 bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
+  
+    if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME) return false;
 
-    auto currentTime = m_Viewer->getFrameStamp()->getReferenceTime();
-    auto deltaTime = currentTime - lastTime;
-    lastTime = currentTime;
-
+    auto deltaTime = Time::GetDeltaTime();
     lastBallSpawn += deltaTime;
+
     constexpr double shapeSpawnTime = 0.5;
     if (lastBallSpawn > shapeSpawnTime) {
         SpawnSphere();
         lastBallSpawn = 0.0;
     }
 
-    // spdlog::info("Reference time: {}, FPS: {}", deltaTime, 1.0 / deltaTime);
+    if (Input::GetKeyDown('f')) {
+        constexpr double spread = 0.05;
+        Ray rayLeft{ m_Camera->m_Position - m_Camera->m_RightVec * spread - m_Camera->m_UpVec * spread, m_Camera->m_ForwardVec};
+        Ray rayMid{ m_Camera->m_Position, m_Camera->m_ForwardVec };
+        Ray rayRight{ m_Camera->m_Position + m_Camera->m_RightVec * spread - m_Camera->m_UpVec * spread, m_Camera->m_ForwardVec };
+        ShootRay(rayLeft);
+        ShootRay(rayMid);
+        ShootRay(rayRight);
 
-    switch (ea.getEventType()) {
-    case osgGA::GUIEventAdapter::KEYDOWN:
-        switch (ea.getKey()) {
-        case 'a': case 'A':
-            moveLeft = 1.0;
-            break;
-        case 'd': case 'D':
-            moveRight = 1.0;
-            break;
-        case 'w': case 'W':
-            moveForward = 1.0;
-            break;
-        case 's': case 'S':
-            moveBackwards = 1.0;
-            break;
-        case 'f': case 'F':
-            ShootRay();
-            break;
-        default:
-            break;
+        // Clean-up
+        std::vector<ShapeNode> newList{};
+        for (auto& sphereNode : m_Shapes) {
+            if (sphereNode.shouldRemove == true) {
+                m_ShapesRoot->removeChild(sphereNode.node);
+                m_Viewer->removeEventHandler(sphereNode.shapeController);
+            }
+            else {
+                newList.push_back(std::move(sphereNode));
+            }
         }
-        break;
-    case osgGA::GUIEventAdapter::KEYUP:
-        switch (ea.getKey()) {
-        case 'a': case 'A':
-            moveLeft = 0.0;
-            break;
-        case 'd': case 'D':
-            moveRight = 0.0;
-            break;
-        case 'w': case 'W':
-            moveForward = 0.0;
-            break;
-        case 's': case 'S':
-            moveBackwards = 0.0;
-            break;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
+
+        m_Shapes = std::move(newList);
     }
 
-    constexpr double moveSpeed = 1.0;
+    // Move Player
+    constexpr double moveSpeed = 5.0;
+    constexpr double rotSpeed = 3.0;
 
-    osg::Vec2d moveVec = { moveRight - moveLeft , moveForward - moveBackwards };
+    double moveHor = (Input::GetKey('d') ? 1 : 0) - (Input::GetKey('a') ? 1 : 0);
+    double moveVer = (Input::GetKey('w') ? 1 : 0) - (Input::GetKey('s') ? 1 : 0);
+
+    osg::Vec2d moveVec = { moveHor , moveVer };
     moveVec.normalize();
     m_Camera->MoveCamera(deltaTime * moveSpeed * moveVec.y(), deltaTime * moveSpeed * moveVec.x());
+
+    // Rotate camera
+    double rotHor = (Input::GetKey(osgGA::GUIEventAdapter::KeySymbol::KEY_Right) ? 1 : 0) - (Input::GetKey(osgGA::GUIEventAdapter::KeySymbol::KEY_Left) ? 1 : 0);
+    double rotVer = (Input::GetKey(osgGA::GUIEventAdapter::KeySymbol::KEY_Up) ? 1 : 0) - (Input::GetKey(osgGA::GUIEventAdapter::KeySymbol::KEY_Down) ? 1 : 0);
+    osg::Vec2d rotVec = { rotHor , rotVer };
+    rotVec.normalize();
+    m_Camera->RotateView(deltaTime * rotSpeed * rotVec.x(), deltaTime * rotSpeed * rotVec.y());
 
     return false;
 }
@@ -354,15 +340,26 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
     TextManager::SetTextNode(text);
 
     osg::Camera* camera = createHUDCamera(0, 1024, 0, 768);
-    camera->addChild(textGeode);
     camera->getOrCreateStateSet()->setMode(
         GL_LIGHTING, osg::StateAttribute::OFF);
+    Ref<HUDCameraManager> hcm = new HUDCameraManager(camera);
+    viewer->addEventHandler(hcm);
+
+    camera->addChild(textGeode);
+
+    osg::MatrixTransform* t = new osg::MatrixTransform();
+    auto crossGeode = CreateCrosshair();
+    t->addChild(crossGeode);
+    camera->addChild(t);
+    Ref<CrossManager> cm = new CrossManager(viewer, t);
+    viewer->addEventHandler(cm);
 
     scn->addChild(camera);
 
+    // Sky-Box
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     geode->addDrawable(new osg::ShapeDrawable(
-        new osg::Sphere(osg::Vec3(), 10)));
+        new osg::Sphere(osg::Vec3(), 100)));
 
     osg::ref_ptr<SkyBox> skybox = new SkyBox;
     skybox->getOrCreateStateSet()->setTextureAttributeAndModes(
@@ -375,14 +372,20 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
         osgDB::readImageFile("assets/posy.jpg"),
         osgDB::readImageFile("assets/negy.jpg"));
     skybox->addChild(geode.get());
-
-    //scn->addChild(skybox);
+    skybox->getOrCreateStateSet()->setRenderBinDetails(-1, "RenderBin");
+    scn->addChild(skybox);
 
     return scn;
 }
 
 void EntryPoint() {
     osgViewer::Viewer viewer;
+
+    Ref<TimeManager> tm = new TimeManager(&viewer);
+    viewer.addEventHandler(tm);
+
+    Ref<InputManager> im = new InputManager(&viewer);
+    viewer.addEventHandler(im);
 
     Ref<FpCameraManipulator> fpm = new FpCameraManipulator{};
     viewer.setCameraManipulator(fpm);
@@ -404,10 +407,10 @@ void EntryPoint() {
     }
 
     while (!viewer.done()) {
+        Input::ClearKeys();
         viewer.frame();
     }
 }
-
 
 int main() {
     spdlog::set_level(spdlog::level::trace);

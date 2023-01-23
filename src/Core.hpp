@@ -3,6 +3,8 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
+#include <array>
+
 #include <spdlog/spdlog.h>
 
 // OpenSceneGraph
@@ -35,7 +37,8 @@
 USE_OSGPLUGIN(obj)
 // 2D Texture Plugins
 USE_OSGPLUGIN(jpeg)
-USE_OSGPLUGIN(freetype)
+USE_OSGPLUGIN(png)
+
 // OSG Settings
 USE_GRAPHICSWINDOW()
 
