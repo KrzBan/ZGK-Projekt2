@@ -134,6 +134,7 @@ private:
     double moveLeft = 0.0;
 
     double lastBallSpawn = 0.0;
+    uint32_t shotsFired = 0;
 };
 
 void PlayerController::AddShape(const std::shared_ptr<Sphere>& sphere) {
@@ -284,6 +285,8 @@ bool PlayerController::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
         ShootRay(rayMid);
         ShootRay(rayRight);
 
+        TextManager::UpdateEffic(++shotsFired);
+
         // Clean-up
         std::vector<ShapeNode> newList{};
         for (auto& sphereNode : m_Shapes) {
@@ -337,13 +340,16 @@ Ref<osg::Group> PrepareScene(osgViewer::Viewer* viewer)
     // HUD Camera
     osg::ref_ptr<osg::Geode> textGeode = new osg::Geode;
     auto textScore = createText( osg::Vec3(10.0f, 30.0f, 0.0f), "Score: 0", 20.0f);
-    osg::ref_ptr<osg::Geode> timeGeode = new osg::Geode;
-    auto textTime = createText(osg::Vec3(10.0f, 50.0f, 0.0f), "Time: ", 20.0f);
+    auto textTime = createText(osg::Vec3(10.0f, 50.0f, 0.0f), "Time: 0", 20.0f);
+    auto textEffic = createText(osg::Vec3(10.0f, 10.0f, 0.0f), "Efficiency: 0", 20.0f);
+
     textGeode->addDrawable(textScore);
     textGeode->addDrawable(textTime);
+    textGeode->addDrawable(textEffic);
 
     TextManager::SetTextNode(textScore);
     TextManager::SetTimeNode(textTime);
+    TextManager::SetEfficNode(textEffic);
 
     osg::Camera* camera = createHUDCamera(0, 1024, 0, 768);
     camera->getOrCreateStateSet()->setMode(
